@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MARAS AI MONEY AUTOPILOT</title>
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#0f172a">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: system-ui, -apple-system, sans-serif; background: #0f172a; color: #e2e8f0; padding: 16px; max-width: 480px; margin: 0 auto; }
+    h1 { font-size: 1.4rem; text-align: center; margin-bottom: 8px; color: #38bdf8; }
+    .subtitle { text-align: center; font-size: 0.85rem; opacity: 0.8; margin-bottom: 20px; }
+    .status { background: #1e293b; padding: 12px; border-radius: 12px; margin-bottom: 16px; text-align: center; }
+    .status.active { border: 2px solid #22c55e; }
+    .status.paused { border: 2px solid #f59e0b; }
+    .buttons { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 20px; }
+    button { background: #1e40af; color: white; border: none; padding: 14px 8px; border-radius: 10px; font-size: 0.9rem; font-weight: 600; cursor: pointer; }
+    button:active { transform: scale(0.98); }
+    button.secondary { background: #334155; }
+    button.danger { background: #dc2626; }
+    button.success { background: #16a34a; }
+    .section { background: #1e293b; border-radius: 12px; padding: 14px; margin-bottom: 16px; }
+    .section h2 { font-size: 1.1rem; margin-bottom: 10px; color: #7dd3fc; }
+    .list { font-size: 0.85rem; line-height: 1.5; }
+    .list div { padding: 6px 0; border-bottom: 1px solid #334155; }
+    .stats { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .stat { background: #0f172a; padding: 10px; border-radius: 8px; text-align: center; }
+    .stat b { display: block; font-size: 1.3rem; color: #4ade80; }
+    input, select, textarea { width: 100%; padding: 10px; margin: 6px 0; border-radius: 8px; border: 1px solid #475569; background: #0f172a; color: white; }
+    .log { max-height: 200px; overflow-y: auto; font-size: 0.75rem; background: #020617; padding: 8px; border-radius: 8px; }
+    .lang { float: right; font-size: 0.75rem; }
+  </style>
+</head>
+<body>
+  <div class="lang">
+    <select id="lang" onchange="setLang(this.value)">
+      <option value="it">Italiano</option>
+      <option value="en">English</option>
+      <option value="ru">Русский</option>
+    </select>
+  </div>
+  <h1 id="title">MARAS AI MONEY AUTOPILOT</h1>
+  <p class="subtitle" id="sub">Sistema autonomo a costo zero · Italia → Internazionale</p>
+
+  <div class="status paused" id="statusBox">
+    <strong id="statusText">SISTEMA IN PAUSA</strong><br>
+    <span id="statusDetail">Agenti pronti. Premi AVVIA per iniziare.</span>
+  </div>
+
+  <div class="buttons">
+    <button class="success" onclick="startAgents()">AVVIA AGENTI</button>
+    <button class="danger" onclick="pauseAgents()">METTI IN PAUSA</button>
+    <button onclick="findClients()">TROVA CLIENTI</button>
+    <button onclick="generateOffers()">GENERA OFFERTE</button>
+    <button onclick="createProduct()">CREA PRODOTTO DIGITALE</button>
+    <button class="secondary" onclick="showSection('clients')">DATABASE CLIENTI</button>
+    <button class="secondary" onclick="showSection('sales')">REGISTRO VENDITE</button>
+    <button class="secondary" onclick="showSection('campaigns')">CAMPAGNE</button>
+    <button class="secondary" onclick="showSection('paypal')">PAYPAL</button>
+    <button class="secondary" onclick="showSection('logs')">OPERAZIONI</button>
+    <button class="secondary" onclick="showSection('stats')">STATISTICHE</button>
+    <button class="secondary" onclick="showSection('settings')">IMPOSTAZIONI</button>
+  </div>
+
+  <div id="content"></div>
+
+  <div class="section">
+    <h2>Prossime azioni reali</h2>
+    <div class="list">
+      <div>1. Connetti PayPal Business (approvazione richiesta)</div>
+      <div>2. Autorizza Gmail/Notion per funnel</div>
+      <div>3. Pubblica su GitHub Pages (gratuito)</div>
+      <div>4. Prima scansione clienti su piattaforme italiane</div>
+    </div>
+  </div>
+
+  <script>
+    const i18n = {
+      it: { title: "MARAS AI MONEY AUTOPILOT", sub: "Sistema autonomo a costo zero · Italia → Internazionale", statusPaused: "SISTEMA IN PAUSA", statusActive: "AGENTI ATTIVI", detailPaused: "Agenti pronti. Premi AVVIA per iniziare.", detailActive: "Scansione mercato e ricerca clienti in corso..." },
+      en: { title: "MARAS AI MONEY AUTOPILOT", sub: "Zero-cost autonomous system · Italy → International", statusPaused: "SYSTEM PAUSED", statusActive: "AGENTS ACTIVE", detailPaused: "Agents ready. Press START to begin.", detailActive: "Market scan and client search running..." },
+      ru: { title: "MARAS AI MONEY AUTOPILOT", sub: "Автономная система за 0 евро · Италия → Международный", statusPaused: "СИСТЕМА НА ПАУЗЕ", statusActive: "АГЕНТЫ АКТИВНЫ", detailPaused: "Агенты готовы. Нажмите ЗАПУСТИТЬ.", detailActive: "Сканирование рынка и поиск клиентов..." }
+    };
+    let lang = "it";
+    let active = false;
+    let db = { clients: [], sales: [], logs: [], campaigns: [] };
+
+    function setLang(l) { lang = l; updateUI(); }
+    function updateUI() {
+      document.getElementById("title").textContent = i18n[lang].title;
+      document.getElementById("sub").textContent = i18n[lang].sub;
+      const box = document.getElementById("statusBox");
+      const text = document.getElementById("statusText");
+      const detail = document.getElementById("statusDetail");
+      if (active) {
+        box.className = "status active";
+        text.textContent = i18n[lang].statusActive;
+        detail.textContent = i18n[lang].detailActive;
+      } else {
+        box.className = "status paused";
+        text.textContent = i18n[lang].statusPaused;
+        detail.textContent = i18n[lang].detailPaused;
+      }
+    }
+
+    function log(msg) {
+      db.logs.unshift({ time: new Date().toLocaleString("it-IT"), msg });
+      if (db.logs.length > 50) db.logs.pop();
+      localStorage.setItem("marasDB", JSON.stringify(db));
+    }
+
+    function loadDB() {
+      const saved = localStorage.getItem("marasDB");
+      if (saved) db = JSON.parse(saved);
+    }
+    loadDB();
+
+    function startAgents() {
+      active = true;
+      updateUI();
+      log("Sistema avviato. Agenti operativi attivati (demo + bot Grok).");
+      alert("Agenti avviati. Le azioni reali richiedono la tua approvazione.");
+    }
+    function pauseAgents() {
+      active = false;
+      updateUI();
+      log("Sistema messo in pausa.");
+    }
+    function findClients() {
+      if (!active) { alert("Avvia prima gli agenti."); return; }
+      const demoClients = [
+        { name: "Agenzia Digital Milano", need: "Landing page + automazione", source: "AddLance / LinkedIn" },
+        { name: "PMI Bergamo", need: "Contenuti AI multilingua", source: "Ricerca pubblica" },
+        { name: "Creator Italia", need: "Ebook + funnel email", source: "X / community" }
+      ];
+      demoClients.forEach(c => db.clients.push({ ...c, date: new Date().toISOString().slice(0,10), status: "nuovo" }));
+      log("Client Finder: trovati 3 potenziali clienti (dati pubblici, nessuna email non autorizzata).");
+      alert("3 potenziali clienti aggiunti al database. Controlla la sezione CLIENTI.");
+      localStorage.setItem("marasDB", JSON.stringify(db));
+    }
+    function generateOffers() {
+      if (!active) { alert("Avvia prima gli agenti."); return; }
+      const offer = "Offerta: Pacchetto Landing + Automazione n8n base · 297€ una tantum o 97€/mese. Consegna 7 giorni. Incluso: 1 landing, 1 workflow, setup PayPal.";
+      log("Offer Generator: generata offerta standard.");
+      alert(offer + "\n\n(Approva prima di inviare a qualsiasi cliente.)");
+    }
+    function createProduct() {
+      if (!active) { alert("Avvia prima gli agenti."); return; }
+      log("Content Creator: preparato template prodotto digitale (ebook/landing).");
+      alert("Prodotto digitale demo creato. File pronto per download o pubblicazione su piattaforme gratuite.");
+    }
+    function showSection(sec) {
+      const c = document.getElementById("content");
+      let html = "";
+      if (sec === "clients") {
+        html = "<div class='section'><h2>Database Clienti</h2><div class='list'>";
+        if (db.clients.length === 0) html += "<div>Nessun cliente ancora. Usa TROVA CLIENTI.</div>";
+        else db.clients.forEach(cl => html += `<div><b>${cl.name}</b><br>${cl.need}<br><small>${cl.source} · ${cl.date}</small></div>`);
+        html += "</div></div>";
+      } else if (sec === "sales") {
+        html = "<div class='section'><h2>Registro Vendite</h2><div class='list'><div>Nessuna vendita reale ancora. Sistema in modalità demo.</div></div></div>";
+      } else if (sec === "campaigns") {
+        html = "<div class='section'><h2>Gestione Campagne</h2><div class='list'><div>Campagne organiche pronte. Nessuna pubblicità a pagamento senza consenso.</div></div></div>";
+      } else if (sec === "paypal") {
+        html = "<div class='section'><h2>Configurazione PayPal</h2><p>Inserisci Client ID PayPal Business (non la password). Collegamento sicuro via OAuth.</p><input placeholder='PayPal Client ID'><button onclick='alert(\"Configurazione salvata localmente. Per attivare pagamenti reali serve approvazione e verifica account.\")'>Salva</button></div>";
+      } else if (sec === "logs") {
+        html = "<div class='section'><h2>Registro Operazioni</h2><div class='log'>";
+        db.logs.slice(0,20).forEach(l => html += `<div>${l.time}: ${l.msg}</div>`);
+        html += "</div></div>";
+      } else if (sec === "stats") {
+        html = `<div class='section'><h2>Statistiche</h2><div class='stats'>
+          <div class='stat'><b>${db.clients.length}</b>Clienti</div>
+          <div class='stat'><b>0</b>Vendite</div>
+          <div class='stat'><b>0€</b>Incassi</div>
+          <div class='stat'><b>${db.logs.length}</b>Operazioni</div>
+        </div></div>`;
+      } else if (sec === "settings") {
+        html = `<div class='section'><h2>Impostazioni Autorizzazioni</h2>
+          <label><input type='checkbox'> Approva invio email commerciali</label><br>
+          <label><input type='checkbox'> Approva pubblicazione contenuti</label><br>
+          <label><input type='checkbox'> Approva operazioni finanziarie</label><br>
+          <p style='margin-top:10px;font-size:0.8rem;opacity:0.7'>Nessuna azione esterna senza la tua conferma esplicita.</p>
+        </div>`;
+      }
+      c.innerHTML = html;
+    }
+    updateUI();
+  </script>
+</body>
+</html>
